@@ -15,4 +15,4 @@ const disposableDomains = new Set([
     // ... add many more
 ]);
 
-module.exports = disposableDomains;
+export default disposableDomains;

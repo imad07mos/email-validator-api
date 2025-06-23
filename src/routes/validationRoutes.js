@@ -1,7 +1,7 @@
 // src/routes/validationRoutes.js
-const express = require('express');
-const { validateEmails } = require('../services/emailValidator');
-const config = require('../config'); // Access config for MAX_EMAILS_PER_REQUEST
+import express from 'express';
+import { validateEmails } from '../services/emailValidator.js';
+import config from '../config/index.js'; // Access config for MAX_EMAILS_PER_REQUEST
 const router = express.Router();
 
 router.post('/validate-emails', async (req, res) => {
@@ -33,4 +33,4 @@ router.post('/validate-emails', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

@@ -143,4 +143,4 @@ const parkingDomainNS = new Set([
     "ztomy.com"
 ]);
 
-module.exports = parkingDomainNS;
+export default parkingDomainNS;

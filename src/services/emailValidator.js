@@ -1,18 +1,17 @@
 // src/services/emailValidator.js
-const validator = require('validator');
-const dns = require('dns');
-const net = require('net'); // For TCP sockets
-const tls = require('tls'); // For STARTTLS/SMTPS
-const mailcheck = require('mailcheck');
-const pLimit = require('p-limit').default; // Correct import for p-limit's default export
-const config = require('../config');
+const validator = (await import('validator')).default;
+const dns = (await import('dns'));
+const net = (await import('net')); // For TCP sockets
+const tls = (await import('tls')); // For STARTTLS/SMTPS
+const mailcheck = (await import('mailcheck')).default;
+const pLimit = (await import('p-limit')).default; // Correct import for p-limit's default export
+const config = (await import('../config/index.js')).default;
 
 // Load custom lists
-const disposableDomains = require('../utils/disposableDomains');
-const blacklistedDomains = require('../utils/blacklistedDomains');
-const knownProviders = require('../utils/knownProviders');
-const parkingDomainNS = require('../utils/parkingDomainNS');
-const { mispWarningDomains, mispWarningEmails } = require('../utils/mispWarningLists'); // NEW: Import MISP lists
+const disposableDomains = (await import('../utils/disposableDomains.js')).default;
+const blacklistedDomains = (await import('../utils/blacklistedDomains.js')).default;
+const knownProviders = (await import('../utils/knownProviders.js')).default;
+const parkingDomainNS = (await import('../utils/parkingDomainNS.js')).default;
 
 // Optional: Word removal list
 const wordRemovalList = new Set([
@@ -96,6 +95,8 @@ function sendSmtpCommand(socket, command, expectedCodes) {
                 const code = parseInt(line.substring(0, 3), 10);
                 const message = line.substring(4); // "250-MESSAGE" or "250 MESSAGE"
 
+                // console.log(`[SMTP Rx] Code: ${code}, Message: ${message}, Raw: "${line}"`); // Debugging line
+
                 if (!isNaN(code) && (line[3] === ' ' || line[3] === '-')) {
                     // Check if this is the final line of a multi-line response
                     if (line[3] === ' ' && expectedCodes.includes(code)) {
@@ -106,15 +107,16 @@ function sendSmtpCommand(socket, command, expectedCodes) {
                     } else if (line[3] === ' ' && !expectedCodes.includes(code)) {
                         clearTimeout(timeoutId);
                         socket.removeListener('data', onData);
-                        // Specific error codes (550, 551, 552, 553, 554, 556) indicate user/mailbox issues
-                        if ([550, 551, 552, 553, 554, 556].includes(code)) {
-                            reject(new Error(`SMTP mailbox error ${code}: ${message}`));
-                        } else if ([450, 451, 452].includes(code)) { // Transient errors
-                             reject(new Error(`SMTP transient error ${code}: ${message}`));
-                        } else if ([530, 535].includes(code)) { // Authentication errors
-                             reject(new Error(`SMTP authentication error ${code}: ${message}`));
-                        } else { // Other permanent errors
-                             reject(new Error(`SMTP permanent error ${code}: ${message}`));
+                        // More specific error handling for common SMTP codes
+                        if (code >= 500 && code < 600) { // Permanent Negative Completion Reply
+                            reject(new Error(`SMTP permanent error ${code}: ${message}`));
+                        } else if (code >= 400 && code < 500) { // Transient Negative Completion Reply
+                            reject(new Error(`SMTP transient error ${code}: ${message}`));
+                        } else if (code === 334) { // Authentication challenge
+                            // This should be handled by the caller, but if it's an unexpected 334, reject
+                            reject(new Error(`SMTP unexpected authentication challenge ${code}: ${message}`));
+                        } else { // Other unexpected codes
+                            reject(new Error(`SMTP unexpected response ${code}: ${message}`));
                         }
                         return;
                     }
@@ -124,6 +126,7 @@ function sendSmtpCommand(socket, command, expectedCodes) {
         };
 
         socket.on('data', onData);
+        // console.log(`[SMTP Tx] Sending: "${command.trim()}"`); // Debugging line
         socket.write(command, (err) => {
             if (err) {
                 clearTimeout(timeoutId);
@@ -152,12 +155,14 @@ async function checkMailboxExists(email, fromEmail) {
             throw new Error('SMTP_HOST is not configured for verification.');
         }
 
-        // Determine if connecting via STARTTLS (port 587) or direct TLS (port 465)
-        let isDirectTls = (port === config.smtpSecurePort);
+        // Determine if connecting via direct TLS (port 465, SMTPS) or standard TCP (port 25/587, for STARTTLS)
+        // The smtpEnableSSL flag explicitly controls direct SSL/TLS connection.
+        let isDirectTls = config.smtpEnableSSL || (port === config.smtpSecurePort);
 
         // 1. Connect to the configured SMTP server (TCP or TLS directly)
         if (isDirectTls) {
              // Direct TLS connection (SMTPS, usually port 465)
+            console.log(`[SMTP] Attempting direct TLS connection to ${host}:${port}...`);
             socket = tls.connect({
                 host: host,
                 port: port,
@@ -166,6 +171,7 @@ async function checkMailboxExists(email, fromEmail) {
             });
         } else {
              // Standard TCP connection (usually port 25 or 587, for STARTTLS later)
+            console.log(`[SMTP] Attempting standard TCP connection to ${host}:${port}...`);
             socket = net.createConnection({ host: host, port: port, timeout: config.smtpConnectTimeoutMs });
         }
 
@@ -185,41 +191,94 @@ async function checkMailboxExists(email, fromEmail) {
         });
 
         await connectPromise;
+        console.log(`[SMTP] Connected to ${host}:${port}`);
 
         // 2. Wait for initial 220 greeting
-        await sendSmtpCommand(socket, '', [220]); // Empty command, just wait for greeting
+        console.log('[SMTP] Waiting for 220 greeting...');
+        try {
+            await sendSmtpCommand(socket, '', [220]); // Empty command, just wait for greeting
+            console.log('[SMTP] Received 220 greeting.');
+        } catch (error) {
+            throw new Error(`SMTP greeting failed: ${error.message}`);
+        }
 
-        // 3. Send EHLO
-        const ehloResponse = await sendSmtpCommand(socket, `EHLO ${config.smtpVerificationFromEmail.split('@')[1]}\r\n`, [250]);
+        // 3. Send EHLO, with HELO fallback
+        let ehloResponse;
+        try {
+            console.log('[SMTP] Sending EHLO...');
+            ehloResponse = await sendSmtpCommand(socket, `EHLO ${config.smtpVerificationFromEmail.split('@')[1]}\r\n`, [250]);
+            console.log('[SMTP] EHLO successful.');
+        } catch (ehloError) {
+            console.warn(`[SMTP] EHLO failed (${ehloError.message}), trying HELO...`);
+            try {
+                ehloResponse = await sendSmtpCommand(socket, `HELO ${config.smtpVerificationFromEmail.split('@')[1]}\r\n`, [250]);
+                console.log('[SMTP] HELO successful.');
+            } catch (heloError) {
+                throw new Error(`SMTP EHLO/HELO failed: ${heloError.message}`);
+            }
+        }
 
         // Check for STARTTLS support and upgrade if available (only if not already direct TLS)
         if (!isDirectTls && !socket.encrypted && ehloResponse.message.includes('STARTTLS')) {
-            await sendSmtpCommand(socket, 'STARTTLS\r\n', [220]);
-            socket = tls.connect({ socket: socket, servername: host, rejectUnauthorized: false }, () => { /* TLS handshake complete */ }); // CAUTION!
+            console.log('[SMTP] STARTTLS supported, sending STARTTLS command...');
+            try {
+                await sendSmtpCommand(socket, 'STARTTLS\r\n', [220]);
+                console.log('[SMTP] STARTTLS command successful, upgrading to TLS...');
+                socket = tls.connect({ socket: socket, servername: host, rejectUnauthorized: false }, () => { /* TLS handshake complete */ }); // CAUTION!
 
-            const tlsHandshakePromise = new Promise((resolve, reject) => {
-                socket.once('secureConnect', () => resolve());
-                socket.once('error', (err) => reject(new Error(`TLS handshake failed: ${err.message}`)));
-            });
-            await tlsHandshakePromise;
+                const tlsHandshakePromise = new Promise((resolve, reject) => {
+                    socket.once('secureConnect', () => resolve());
+                    socket.once('error', (err) => reject(new Error(`TLS handshake failed: ${err.message}`)));
+                });
+                await tlsHandshakePromise;
+                console.log('[SMTP] TLS handshake complete. Re-sending EHLO...');
 
-            // Re-send EHLO after STARTTLS
-            await sendSmtpCommand(socket, `EHLO ${config.smtpVerificationFromEmail.split('@')[1]}\r\n`, [250]);
+                // Re-send EHLO after STARTTLS
+                ehloResponse = await sendSmtpCommand(socket, `EHLO ${config.smtpVerificationFromEmail.split('@')[1]}\r\n`, [250]);
+                console.log('[SMTP] EHLO re-sent successfully after STARTTLS.');
+            } catch (error) {
+                throw new Error(`SMTP STARTTLS/TLS handshake failed: ${error.message}`);
+            }
         }
 
         // --- SMTP Authentication ---
         if (config.smtpUsername && config.smtpPassword) {
-            // AUTH LOGIN mechanism (most common)
-            await sendSmtpCommand(socket, 'AUTH LOGIN\r\n', [334]);
-            await sendSmtpCommand(socket, Buffer.from(config.smtpUsername).toString('base64') + '\r\n', [334]);
-            await sendSmtpCommand(socket, Buffer.from(config.smtpPassword).toString('base64') + '\r\n', [235]); // 235: Authentication successful
+            console.log('[SMTP] Authentication credentials found, attempting AUTH LOGIN...');
+            try {
+                await sendSmtpCommand(socket, 'AUTH LOGIN\r\n', [334]);
+                await sendSmtpCommand(socket, Buffer.from(config.smtpUsername).toString('base64') + '\r\n', [334]);
+                await sendSmtpCommand(socket, Buffer.from(config.smtpPassword).toString('base64') + '\r\n', [235]); // 235: Authentication successful
+                console.log('[SMTP] Authentication successful.');
+            } catch (error) {
+                throw new Error(`SMTP authentication failed: ${error.message}`);
+            }
         }
 
         // 4. Send MAIL FROM
-        await sendSmtpCommand(socket, `MAIL FROM:<${fromEmail}>\r\n`, [250]);
+        console.log(`[SMTP] Sending MAIL FROM:<${fromEmail}>...`);
+        try {
+            await sendSmtpCommand(socket, `MAIL FROM:<${fromEmail}>\r\n`, [250]);
+            console.log('[SMTP] MAIL FROM successful.');
+        } catch (error) {
+            throw new Error(`SMTP MAIL FROM failed: ${error.message}`);
+        }
 
         // 5. Send RCPT TO (This is the core check performed via the configured SMTP server)
-        await sendSmtpCommand(socket, `RCPT TO:<${email}>\r\n`, [250]);
+        console.log(`[SMTP] Sending RCPT TO:<${email}>...`);
+        try {
+            await sendSmtpCommand(socket, `RCPT TO:<${email}>\r\n`, [250]);
+            console.log('[SMTP] RCPT TO successful, mailbox appears to exist.');
+        } catch (error) {
+            throw new Error(`SMTP RCPT TO failed: ${error.message}`);
+        }
+
+        // Optional: Send RSET to reset state for next command (good practice)
+        try {
+            await sendSmtpCommand(socket, 'RSET\r\n', [250]);
+            console.log('[SMTP] RSET successful.');
+        } catch (error) {
+            console.warn(`[SMTP] RSET failed (non-critical): ${error.message}`);
+        }
 
         // If all commands succeeded, the mailbox appears to exist (from the perspective of our SMTP server)
         return true;
@@ -304,17 +363,6 @@ async function validateSingleEmail(email) {
         return result;
     }
 
-    // 5. MISP Warning List Check (Domains)
-    if (mispWarningDomains.has(domain)) {
-        result.reason = 'Domain found in MISP warning lists.';
-        return result;
-    }
-
-    // 6. MISP Warning List Check (Full Email Addresses)
-    if (mispWarningEmails.has(cleanedEmail)) {
-        result.reason = 'Email address found in MISP warning lists.';
-        return result;
-    }
 
     // 7. Word Removal List Check (Optional)
     // FIX: Check only against the localPart, not the entire email
@@ -440,6 +488,6 @@ async function validateEmails(emails) {
     return Promise.all(validationPromises);
 }
 
-module.exports = {
+export {
     validateEmails
 };

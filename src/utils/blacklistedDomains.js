@@ -5,6 +5,20 @@ const blacklistedDomains = new Set([
 	"spamdomain.xyz",
     "botfarm.net",
     "badmail.com",
+    // Yahoo domains
+    "yahoo.com",
+    "yahoo.co.uk",
+    "yahoo.fr",
+    "yahoo.de",
+    "ymail.com",
+    "rocketmail.com",
+    // Microsoft domains
+    "hotmail.com",
+    "outlook.com",
+    "live.com",
+    "msn.com",
+    "outlook.fr",
+    "live.fr",
 	"0-mail.com",
     "027168.com",
     "0815.ru",
@@ -4273,4 +4287,4 @@ const blacklistedDomains = new Set([
     // ... add more as needed based on your experience
 ]);
 
-module.exports = blacklistedDomains;
+export default blacklistedDomains;

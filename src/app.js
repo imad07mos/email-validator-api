@@ -1,7 +1,7 @@
 // src/app.js
-const express = require('express');
-const config = require('./config');
-const validationRoutes = require('./routes/validationRoutes');
+import express from 'express';
+import config from './config/index.js';
+import validationRoutes from './routes/validationRoutes.js';
 
 const app = express();
 
@@ -39,4 +39,4 @@ app.listen(config.port, () => {
     console.log(`Access Validation API at http://localhost:${config.port}/api/validate-emails?token=${config.apiToken}`);
 });
 
-module.exports = app;
+export default app;

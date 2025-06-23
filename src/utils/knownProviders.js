@@ -20,4 +20,4 @@ const knownProviders = new Set([
     // Add more as needed
 ]);
 
-module.exports = knownProviders;
+export default knownProviders;
