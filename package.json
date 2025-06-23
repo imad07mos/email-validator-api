@@ -1,0 +1,37 @@
+{
+  "name": "email-validator-api",
+  "version": "1.0.0",
+  "description": "An Express.js API for multi-layered email validation.",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "keywords": [
+    "email",
+    "validation",
+    "api",
+    "express",
+    "docker",
+    "nodejs"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "dns": "^0.2.2",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.1",
+    "google-auth-library": "^10.1.0",
+    "googleapis": "^150.0.1",
+    "mailcheck": "^1.1.1",
+    "node-fetch": "^3.3.2",
+    "p-limit": "^6.1.0",
+    "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "type": "commonjs"
+}
