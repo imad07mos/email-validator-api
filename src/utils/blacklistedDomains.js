@@ -1,26 +1,27 @@
-// src/utils/blacklistedDomains.js
+
 const blacklistedDomains = new Set([
     "sentry.io",
-    "sentry.wixpress.com", // Added as requested
+    "sentry.wixpress.com", 
+    "sentry-next.wixpress.com",
 	"wix.com",
 	"spamdomain.xyz",
     "botfarm.net",
     "badmail.com",
-    // Yahoo domains
+    
     "yahoo.com",
     "yahoo.co.uk",
     "yahoo.fr",
     "yahoo.de",
     "ymail.com",
     "rocketmail.com",
-    // Microsoft domains
+    
     "hotmail.com",
     "outlook.com",
     "live.com",
     "msn.com",
     "outlook.fr",
     "live.fr",
-    // Common marketing, analytics, and debugging services
+    
     "google-analytics.com",
     "googletagmanager.com",
     "mixpanel.com",
@@ -47,7 +48,7 @@ const blacklistedDomains = new Set([
     "dynatrace.com",
     "raygun.io",
     "rollbar.com",
-    "sentry.io", // Already present, but good to re-list for clarity
+    "sentry.io", 
     "stats.com",
     "analytics.com",
     "tracking.com",
@@ -4321,7 +4322,7 @@ const blacklistedDomains = new Set([
     "zzi.us",
     "zzrgg.com",
     "zzz.com"
-    // ... add more as needed based on your experience
+    
 ]);
 
 export default blacklistedDomains;
