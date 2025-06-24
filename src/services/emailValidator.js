@@ -25,7 +25,7 @@ const wordRemovalList = new Set([
     "administrator", "root", "noreply", "no-reply", "donotreply", 
     "support", "helpdesk", "system", "postmaster", "webmaster", "sysadmin",
     "daemon", "mailer", "autoresponder", "automated",
-    "admin", "info", "contact", "enquiry", "sales", "marketing", // General contact/department
+    "sales", "marketing", // General contact/department
     "billing", "accounts", "finance", "press", "media", // Business departments
     "dev", "development", "developer", "test", "testing", "debug", // Development/Debugging
     "staging", "production", "beta", "alpha", "qa", // Environment/Release stages
