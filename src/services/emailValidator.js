@@ -18,52 +18,69 @@ const wordRemovalList = new Set([
     // Common spam and abuse indicators
     "spam", "spamword", "abuse", "junk", "scam", "bot", "phishing", "fraud",
     "malware", "virus", "trojan", "suspicious", "blacklist", "spammer",
+    "dmca", "copyright", "legal", "infringement", "takedown", // Legal/DMCA related
+    "violation", "report", "security", "alert", "warning", // Security/Alerts
     
     // Admin or system accounts
     "administrator", "root", "noreply", "no-reply", "donotreply", 
     "support", "helpdesk", "system", "postmaster", "webmaster", "sysadmin",
     "daemon", "mailer", "autoresponder", "automated",
+    "admin", "info", "contact", "enquiry", "sales", "marketing", // General contact/department
+    "billing", "accounts", "finance", "press", "media", // Business departments
+    "dev", "development", "developer", "test", "testing", "debug", // Development/Debugging
+    "staging", "production", "beta", "alpha", "qa", // Environment/Release stages
     
     // Fake/test accounts
     "test", "testing", "testaccount", "testuser", "demo", "example", 
     "sample", "placeholder", "dummy", "mockuser", "trial", "beta",
+    "temp", "temporary", "disposable", "throwaway", "burner", "oneuse", // Temporary/Disposable
+    "fake", "invalid", "null", "undefined", "anon", "anonymous", // Generic/Invalid
     
     // Offensive or restricted content
     "banned", "illegal", "hacker", "exploit", "attack", "malicious",
     "unauthorized", "forbidden", "restricted", "violation", "breach",
+    "porn", "sex", "xxx", "adult", "nude", "erotic", // Explicit content
     
     // Marketing and promotional
     "newsletter", "marketing", "sales", "unsubscribe", "offers", "promo",
     "promotion", "advertising", "campaign", "bulk", "broadcast", "mass",
     "commercial", "solicitation", "affiliate", "referral",
+    "noreply", "notifications", "alerts", "updates", "digest", // Automated notifications
     
-    // Temporary and throwaway accounts  
+    // Temporary and throwaway accounts (re-listed for clarity, some overlap with fake/test)
     "temp", "temporary", "disposable", "throwaway", "burner", "oneuse",
     "shortterm", "instant", "quick", "fast", "immediate",
     
-    // Generic and placeholder terms
+    // Generic and placeholder terms (re-listed for clarity, some overlap with fake/test)
     "null", "undefined", "anonymous", "guest", "user", "fake", "default",
     "generic", "random", "unknown", "nobody", "none", "empty", "blank",
     
     // Bot and automation indicators
     "robot", "crawler", "spider", "scraper", "automaton", "script",
     "program", "service", "process", "worker", "agent",
+    "bot", "daemon", "webhook", "api", "integration", // Automation/API related
     
     // Suspicious patterns
     "generator", "creator", "maker", "builder", "factory", "producer",
     "harvester", "collector", "grabber", "extractor",
+    "phish", "scam", "fraud", "hack", "exploit", "crack", // Malicious intent
     
     // Common gibberish patterns (you may want to add regex patterns for these)
     "asdf", "qwerty", "123456", "abcdef", "xxxxxx", "zzzzzz",
     "aaaaaa", "111111", "000000", "testtest", "blahblah",
+    "qwe", "asd", "zxc", "fgh", "jkl", "tyu", "iop", // More gibberish
     
     // Professional red flags
     "intern", "trainee", "student", "learner", "beginner", "novice",
     "junior", "entry", "assistant", "helper", "volunteer",
+    "hr", "recruitment", "jobs", "careers", "employment", // HR/Recruitment related
     
     // Verification and validation issues
     "unverified", "invalid", "expired", "suspended", "disabled", "inactive",
-    "pending", "waiting", "queued", "processing", "reviewing"
+    "pending", "waiting", "queued", "processing", "reviewing",
+    "bounce", "undeliverable", "mailer-daemon", "postmaster", // Email delivery issues
+    "abuse", "spam", "junk", "complaint", // Abuse reports
+    "no-reply", "do-not-reply" // Common automated sender prefixes
 ]);
 // Initialize the p-limit instance
 const limit = pLimit(config.concurrencyLimit);
